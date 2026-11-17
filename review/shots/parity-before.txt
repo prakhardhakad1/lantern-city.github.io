@@ -1,0 +1,20 @@
+﻿60,1024 run-right-jump c7e63d419f end=398,986,normal
+60,1024 run-left-dash 72f978ed91 end=360,1018,normal
+60,1024 strike-mash 246ab4e415 end=341,999,normal
+300,1024 run-right-jump b0d8427672 end=334,994,normal
+300,1024 run-left-dash 2a818148e6 end=360,1018,normal
+300,1024 strike-mash a2b403770c end=341,999,normal
+424,1024 run-right-jump 4f770e5f36 end=398,986,normal
+424,1024 run-left-dash 9fb5f837ef end=360,1018,normal
+424,1024 strike-mash 5c40ca0b25 end=810,992,normal
+500,1000 run-right-jump 8e352c9930 end=629,986,normal
+500,1000 run-left-dash 8e02f1fdd3 end=693,1024,respawn
+500,1000 strike-mash 1defc18aa4 end=964,1001,normal
+760,760 run-right-jump f5fad145e3 end=926,794,normal
+760,760 run-left-dash adfda14cbd end=952,818,normal
+760,760 strike-mash dcd87daa75 end=933,799,normal
+700,480 run-right-jump 69e80490c1 end=696,478,respawn
+700,480 run-left-dash 1110660c74 end=693,480,respawn
+700,480 strike-mash dec6926635 end=705,478,respawn
+(node:18116) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
