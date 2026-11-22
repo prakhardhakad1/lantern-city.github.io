@@ -188,3 +188,136 @@ export function pipes(b: PixelBuffer, y: number, thick: number, seed: number) {
     if (hash2(x, seed, 361) < 0.03) put(b, x, y + 2, 2);
   }
 }
+
+/** Round blossom canopies (filled 0, dithered with 1 for blooms) standing on a profile. */
+export function blossomTrees(b: PixelBuffer, prof: number[], seed: number, every = 34) {
+  for (let x0 = 0; x0 < LW; x0 += every) {
+    if (hash2(x0, seed, 371) < 0.25) continue;
+    const x = x0 + Math.floor(hash2(x0, seed, 372) * 12);
+    const base = prof[wrap(x)] + 1;
+    const h = 10 + Math.floor(hash2(x0, seed, 373) * 10);
+    const cr = 7 + Math.floor(hash2(x0, seed, 374) * 6);
+    fillCol(b, x, base - h, base, 0);
+    put(b, x - 1, base - h + 4, 0);
+    const cy = base - h - cr + 4;
+    for (const [dx, dy, rr] of [
+      [-cr * 0.6, 2, cr - 2],
+      [0, -2, cr],
+      [cr * 0.6, 2, cr - 2],
+    ] as const)
+      for (let yy = -rr; yy <= rr; yy++)
+        for (let xx = -rr; xx <= rr; xx++) {
+          const d = Math.hypot(xx, yy);
+          if (d > rr) continue;
+          const px = x + dx + xx;
+          const py = cy + dy + yy;
+          put(b, px, py, d > rr - 1 && yy < 1 ? 1 : bayer(Math.round(px), Math.round(py)) < 0.22 ? 1 : 0);
+        }
+  }
+}
+
+/** Small pagodas on the hills (three tiers, flicked roof tips). */
+export function pagodas(b: PixelBuffer, prof: number[], seed: number, every = 150) {
+  for (let x0 = 20; x0 < LW; x0 += every) {
+    const x = x0 + Math.floor(hash2(x0, seed, 381) * 40);
+    let y = prof[wrap(x)] + 1;
+    for (let f = 0; f < 3; f++) {
+      const hw = 9 - f * 2;
+      const h = 6 - f;
+      for (let j = 0; j < h; j++) for (let i = -hw + 2; i <= hw - 2; i++) put(b, x + i, y - j, 0);
+      for (let j = 0; j < h; j++) {
+        put(b, x - hw + 2, y - j, 1);
+        put(b, x + hw - 2, y - j, 1);
+      }
+      if (f === 0) put(b, x, y - 2, 2);
+      y -= h;
+      for (let i = -hw - 3; i <= hw + 3; i++) {
+        const lift = Math.abs(i) > hw ? Math.abs(i) - hw : 0;
+        put(b, x + i, y - lift, 1);
+        put(b, x + i, y - lift + 1, 0);
+      }
+      y -= 1;
+    }
+    fillCol(b, x, y - 7, y + 1, 1);
+  }
+}
+
+/** A bank of cumulus clouds: filled 0 with a lit (1) rim on top. Returns the top profile. */
+export function cloudBank(b: PixelBuffer, base: number, seed: number, lumps = 26) {
+  const top = new Array<number>(LW).fill(base + 4);
+  for (let k = 0; k < lumps * 2; k++) {
+    const cx = Math.floor((k / (lumps * 2)) * LW + hash2(k, seed, 391) * 14);
+    const r = 10 + Math.floor(hash2(k, seed, 392) * 16);
+    const cy = base + 4 - Math.floor(hash2(k, seed, 393) * 8);
+    for (let x = -r; x <= r; x++) {
+      const y = Math.round(cy - Math.sqrt(r * r - x * x) * 0.8);
+      const wx = wrap(cx + x);
+      top[wx] = Math.min(top[wx], y);
+    }
+  }
+  for (let x = 0; x < LW; x++) {
+    fillCol(b, x, top[x], b.h, 0);
+    put(b, x, top[x], 1);
+    if (hash2(x, seed, 394) < 0.5) put(b, x, top[x] + 1, 1);
+    for (let y = top[x] + 6; y < b.h; y += 7) if ((x + y) % 11 === 0) put(b, x, y, 1);
+  }
+  return top;
+}
+
+/** Airships moored in the distance: a cigar envelope, a gondola and a little fin. */
+export function airships(b: PixelBuffer, seed: number, n = 3) {
+  for (let k = 0; k < n; k++) {
+    const cx = Math.floor((k + 0.3 + hash2(k, seed, 401) * 0.4) * (LW / n));
+    const cy = 30 + Math.floor(hash2(k, seed, 402) * 40);
+    const rx = 22 + Math.floor(hash2(k, seed, 403) * 14);
+    const ry = Math.round(rx * 0.32);
+    for (let y = -ry; y <= ry; y++)
+      for (let x = -rx; x <= rx; x++) {
+        const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+        if (d > 1) continue;
+        put(b, cx + x, cy + y, d > 0.8 || (y === 0 && Math.abs(x) < rx - 3) || x % 9 === 0 ? 1 : 0);
+      }
+    for (let i = 0; i < 6; i++) put(b, cx - rx - i, cy - i, 1);
+    for (let i = 0; i < 6; i++) put(b, cx - rx - i, cy + i, 1);
+    const gy = cy + ry + 3;
+    for (let x = -6; x <= 6; x++) for (let y = 0; y < 4; y++) put(b, cx + x, gy + y, y === 0 || Math.abs(x) === 6 ? 1 : 0);
+    put(b, cx - 4, gy - 2, 1);
+    put(b, cx + 4, gy - 2, 1);
+    put(b, cx - 2, gy + 1, 2);
+    put(b, cx + 2, gy + 1, 2);
+  }
+}
+
+/** Neon towers: tall blocks with lit windows (2), rooftop signs and antennas. */
+export function neonTowers(b: PixelBuffer, base: number, seed: number) {
+  for (let x0 = 0; x0 < LW; x0 += 30) {
+    const w = 16 + Math.floor(hash2(x0, seed, 411) * 14);
+    const h = 40 + Math.floor(hash2(x0, seed, 412) * 70);
+    const x = x0 + Math.floor(hash2(x0, seed, 413) * 6);
+    const top = base - h;
+    for (let i = 0; i < w; i++) fillCol(b, x + i, top, b.h, 0);
+    fillCol(b, x, top, b.h, 1);
+    fillCol(b, x + w - 1, top, b.h, 1);
+    for (let i = 0; i < w; i++) put(b, x + i, top, 1);
+    // antenna with a blinking tip
+    if (hash2(x0, seed, 414) < 0.5) {
+      fillCol(b, x + (w >> 1), top - 12, top, 1);
+      put(b, x + (w >> 1), top - 13, 2);
+    }
+    // a vertical neon sign hanging off the side
+    if (hash2(x0, seed, 415) < 0.55) {
+      const sy = top + 8 + Math.floor(hash2(x0, seed, 416) * 20);
+      for (let j = 0; j < 18; j++) {
+        put(b, x + w, sy + j, 2);
+        put(b, x + w + 3, sy + j, 2);
+        if (j % 5 === 2) put(b, x + w + 1, sy + j, 2), put(b, x + w + 2, sy + j, 2);
+      }
+    }
+    for (let wy = top + 4; wy < base; wy += 5)
+      for (let wx = x + 3; wx < x + w - 2; wx += 3) {
+        const q = hash2(wx, wy, seed + 417);
+        if (q < 0.16) put(b, wx, wy, 2);
+        else if (q < 0.3) put(b, wx, wy, 1);
+      }
+  }
+}

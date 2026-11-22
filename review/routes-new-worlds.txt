@@ -1,0 +1,79 @@
+﻿
+S2 koi ponds
+  OK    plaza -> stone A1: 6/32 plans, easiest plain jump
+  OK    stone A1 -> A2: 6/32 plans, easiest plain jump
+  OK    stone A2 -> islet: 14/32 plans, easiest plain jump
+  OK    islet -> stone B1: 8/32 plans, easiest plain jump
+  OK    B1 -> B2: 6/32 plans, easiest plain jump
+  TIGHT B2 -> B3: 3/32 plans, easiest plain jump
+  OK    B3 -> grove shore: 16/32 plans, easiest plain jump
+  OK    fell in pond A: swim out onto a stone: ended at 51.6,30.00
+
+S3 bamboo grove
+  OK    grove -> bamboo poles: 11/32 plans, easiest plain jump
+  OK    poles -> high terrace: 8/32 plans, easiest plain jump
+
+S4 pagoda roofs
+  OK    terrace -> roof 1: 10/32 plans, easiest plain jump
+  OK    roof 1 -> roof 2: 7/32 plans, easiest plain jump
+  OK    roof 2 -> over the crumbling bridge -> roof 3: 15/32 plans, easiest plain jump
+  OK    run straight across the crumbling bridge: ended at 163.6,23.00
+  OK    roof 3 -> fountain garden: 10/32 plans, easiest plain jump
+
+S5 fountain garden
+  OK    ride the fountain spray up the cliff: ended at 181.1,17.00
+
+S6 shrine terrace
+  OK    cliff -> lantern terrace (wings or dash): 762/1600 plans, easiest plain jump
+
+blossom: 17/17 checks pass
+
+S2 floating hops
+  OK    pier -> deck 1: 8/32 plans, easiest plain jump
+  OK    deck 1 -> deck 2: 11/32 plans, easiest plain jump
+  OK    deck 2 -> deck 3: 11/32 plans, easiest plain jump
+  OK    deck 3 -> windward pier: 16/32 plans, easiest plain jump
+
+S3 windward pier
+  OK    push through the headwind and over the crates: ended at 89.3,30.00
+
+S4 fan chasm
+  OK    drop into fan 1 and ride it up to the high dock: ended at 100.1,17.00
+  OK    hop into fan 2 and ride it up to the top deck: ended at 116.8,11.00
+  OK    top deck -> airship deck: 16/32 plans, easiest plain jump
+
+S5 airship
+  OK    spring up into the rigging: ended at 158.6,18.00
+
+S6 gondola run
+  OK    rigging -> gondola deck A: 9/32 plans, easiest plain jump
+  OK    deck A -> deck B: 7/32 plans, easiest plain jump
+  OK    deck B -> lantern dock: 10/32 plans, easiest plain jump
+
+skyharbor: 12/12 checks pass
+
+S2 market lane
+  OK    over gutter 1: 12/32 plans, easiest plain jump
+  OK    over gutter 2: 9/32 plans, easiest plain jump
+  OK    street -> canal awning 1: 6/32 plans, easiest plain jump
+  OK    awning 1 -> 2: 9/32 plans, easiest plain jump
+  OK    awning 2 -> 3: 9/32 plans, easiest plain jump
+  OK    awning 3 -> street: 16/32 plans, easiest plain jump
+
+S3 rooftops
+  OK    street -> balcony 1: 8/32 plans, easiest plain jump
+  OK    balcony 1 -> 2: 8/32 plans, easiest plain jump
+  OK    balcony 2 -> 3: 8/32 plans, easiest plain jump
+  OK    balcony 3 -> roof A: 8/32 plans, easiest plain jump
+  OK    roof A -> roof B: 16/32 plans, easiest plain jump
+  OK    roof B -> roof C (wings help): 27/160 plans, easiest plain jump
+  OK    run over the old crates to roof D: ended at 155.5,17.00
+  OK    roof D -> arcade street: 16/32 plans, easiest plain jump
+
+S4 neon arcade
+  OK    street -> canal island: 6/32 plans, easiest plain jump
+  OK    island -> awning: 6/32 plans, easiest plain jump
+  OK    awning -> lantern street: 16/32 plans, easiest plain jump
+  OK    island -> lantern street direct (wings or dash): 334/1600 plans, easiest plain jump
+
+bazaar: 18/18 checks pass

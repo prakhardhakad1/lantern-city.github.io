@@ -18,6 +18,8 @@ export interface Ramp {
   depth?: { col: string; max: number; k: number };
   lip?: string;
   outline?: string;
+  /** Palette indices that ignore depth darkening (lit windows, neon). */
+  glowIdx?: number[];
 }
 
 type RGB = [number, number, number];
@@ -34,12 +36,13 @@ interface Compiled {
   depthMax: number;
   lip: number;
   outline: number;
+  glow: boolean[];
 }
 
 const compiled = new Map<string, Compiled>();
 
 function compile(pal: Palette, ramp: Ramp): Compiled {
-  const key = `${pal.join()}|${ramp.c.join()}|${ramp.sky?.join()}|${ramp.depth?.col}${ramp.depth?.max}${ramp.depth?.k}|${ramp.lip}|${ramp.outline}`;
+  const key = `${pal.join()}|${ramp.c.join()}|${ramp.sky?.join()}|${ramp.depth?.col}${ramp.depth?.max}${ramp.depth?.k}|${ramp.lip}|${ramp.outline}|${ramp.glowIdx?.join()}`;
   let c = compiled.get(key);
   if (c) return c;
   const src = pal.map((p) => pack(hexToRgb(p)) & 0x00ffffff);
@@ -72,6 +75,7 @@ function compile(pal: Palette, ramp: Ramp): Compiled {
     depthMax: dm,
     lip: ramp.lip ? pack(toRgb(ramp.lip)) : 0,
     outline: ramp.outline ? pack(toRgb(ramp.outline)) : 0,
+    glow: [0, 1, 2, 3].map((i) => ramp.glowIdx?.includes(i) ?? false),
   };
   compiled.set(key, c);
   return c;
@@ -110,7 +114,7 @@ export function recolor(canvas: HTMLCanvasElement, pal: Palette, ramp: Ramp, reg
       run++;
       if (idx < 0) continue;
       if (c.lip && run === 1 && idx > 0 && y > 0) px[i] = c.lip;
-      else if (c.depth) px[i] = c.depth[idx][Math.min(run - 1, c.depthMax)];
+      else if (c.depth && !c.glow[idx]) px[i] = c.depth[idx][Math.min(run - 1, c.depthMax)];
       else px[i] = c.dst[idx];
     }
   }

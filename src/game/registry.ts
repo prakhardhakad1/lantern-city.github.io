@@ -62,6 +62,8 @@ export interface WorldDef {
   dark?: boolean;
   /** World unlocked on the train when this world's sector lantern is relit. */
   unlocks?: string;
+  /** Extra train lines opened by this lantern, without changing what `unlocks` does (or the ending). */
+  opens?: string[];
   /** Dev-only worlds (not on the train map); reach them with ?world=<id>. */
   hidden?: boolean;
   /** Atmospheric particles drifting through the view. */

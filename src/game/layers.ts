@@ -7,12 +7,14 @@ import { H, W, type Renderer } from '../engine/renderer';
  * renderer simply draws into that layer's canvas. compose() recolours each layer with its ramp
  * and stacks them onto the real screen.
  */
-export type LayerName = 'far' | 'near' | 'terrain' | 'actors' | 'hero';
-export const LAYER_ORDER: LayerName[] = ['far', 'near', 'terrain', 'actors', 'hero'];
+export type LayerName = 'far' | 'near' | 'fluid' | 'terrain' | 'actors' | 'hero';
+export const LAYER_ORDER: LayerName[] = ['far', 'near', 'fluid', 'terrain', 'actors', 'hero'];
 
 export interface Theme {
   far: Ramp;
   near: Ramp;
+  /** Water, acid and wind; defaults to the near-background ramp. */
+  fluid?: Ramp;
   terrain: Ramp;
   actors: Ramp;
 }
@@ -68,7 +70,7 @@ export class LayerStack {
     heroBox?: { x: number; y: number; w: number; h: number },
   ) {
     this.end(r);
-    const ramps: Record<LayerName, Ramp> = { ...theme, hero: HERO_RAMP };
+    const ramps: Record<LayerName, Ramp> = { ...theme, fluid: theme.fluid ?? theme.near, hero: HERO_RAMP };
     for (const name of LAYER_ORDER) {
       if (!used.has(name) && name !== 'far') continue;
       const c = this.canvas(name);

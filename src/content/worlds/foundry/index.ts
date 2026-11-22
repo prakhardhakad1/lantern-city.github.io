@@ -18,6 +18,8 @@ const world: WorldDef = {
   name: 'Ember Foundry',
   station: 'FOUNDRY',
   order: 5,
+  // the Barons' works are the story's finale; relighting them also opens three new lines
+  opens: ['blossom'],
   palette: foundryPalette,
   tiles: foundryStyle,
   backdrop: withMid(foundryBackdrop, foundryMid),

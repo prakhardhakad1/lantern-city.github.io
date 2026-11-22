@@ -1,4 +1,4 @@
-import { blit, DecorParticles, fxRand, fxRange, glow, mix, rgba, vGradient, vignette } from '../engine/fx';
+import { blit, DecorParticles, fxRand, fxRange, glow, glowSprite, mix, rgba, vGradient, vignette } from '../engine/fx';
 import { clamp, hash2 } from '../engine/math';
 import type { Palette } from '../engine/palette';
 import { H, W, type Renderer } from '../engine/renderer';
@@ -12,7 +12,7 @@ import type { World } from './world';
  * bats, light shafts, fog, bubbles, wisps, aurora…), a colour grade and a vignette.
  * Nothing here reads input, touches collision, or uses Math.random (gameplay RNG is untouched).
  */
-export type LifeKind = 'fireflies' | 'shafts' | 'fog' | 'bats' | 'bubbles' | 'sparks' | 'wisps' | 'leaves' | 'aurora' | 'drips' | 'smoke';
+export type LifeKind = 'fireflies' | 'shafts' | 'fog' | 'bats' | 'bubbles' | 'sparks' | 'wisps' | 'leaves' | 'aurora' | 'drips' | 'smoke' | 'petals' | 'rain' | 'clouds';
 
 export interface Look {
   /** Sky gradient: top, middle, horizon. */
@@ -104,6 +104,8 @@ export class Atmosphere {
   private bats: { x: number; y: number; ph: number; s: number }[] = [];
   private leaves: { x: number; y: number; ph: number; s: number }[] = [];
   private bubbles: { x: number; y: number; s: number; w: number }[] = [];
+  private drops: { x: number; y: number; s: number }[] = [];
+  private clouds: { x: number; y: number; s: number; w: number }[] = [];
   private batT = 6;
   readonly decor = new DecorParticles();
   private has: Set<LifeKind>;
@@ -118,6 +120,10 @@ export class Atmosphere {
     const n = this.has.has('fireflies') ? 22 : this.has.has('wisps') ? 14 : 0;
     for (let i = 0; i < n; i++) this.motes.push({ x: fxRange(0, W), y: fxRange(0, H), vx: 0, vy: 0, ph: fxRange(0, 7) });
     if (this.has.has('leaves')) for (let i = 0; i < 9; i++) this.leaves.push({ x: fxRange(0, W), y: fxRange(0, H), ph: fxRange(0, 7), s: fxRange(0.6, 1.2) });
+    if (this.has.has('petals')) for (let i = 0; i < 22; i++) this.leaves.push({ x: fxRange(0, W), y: fxRange(0, H), ph: fxRange(0, 7), s: fxRange(0.4, 1.0) });
+    if (this.has.has('rain')) for (let i = 0; i < 70; i++) this.drops.push({ x: fxRange(0, W), y: fxRange(0, H), s: fxRange(0.7, 1.3) });
+    if (this.has.has('clouds'))
+      for (let i = 0; i < 7; i++) this.clouds.push({ x: fxRange(-40, W + 40), y: fxRange(70, H + 10), s: fxRange(0.3, 1), w: fxRange(40, 90) });
     if (this.has.has('bubbles')) for (let i = 0; i < 16; i++) this.bubbles.push({ x: fxRange(0, W), y: fxRange(0, H), s: fxRange(8, 22), w: fxRange(0, 7) });
   }
 
@@ -154,6 +160,25 @@ export class Atmosphere {
       if (b.x < -4) b.x += W + 8;
       if (b.x > W + 4) b.x -= W + 8;
     }
+    for (const d of this.drops) {
+      d.x += (-40 * d.s) * dt - camDX;
+      d.y += 260 * d.s * dt - camDY;
+      if (d.y > H + 8) {
+        d.y -= H + 16;
+        d.x = fxRange(0, W + 40);
+      }
+      if (d.y < -8) d.y += H + 16;
+      if (d.x < -8) d.x += W + 16;
+      if (d.x > W + 8) d.x -= W + 16;
+    }
+    for (const c of this.clouds) {
+      c.x += 6 * c.s * dt - camDX * (0.15 + c.s * 0.25);
+      c.y -= camDY * (0.15 + c.s * 0.25);
+      if (c.x > W + c.w) c.x -= W + c.w * 2;
+      if (c.x < -c.w) c.x += W + c.w * 2;
+      if (c.y < 40) c.y += H;
+      if (c.y > H + 30) c.y -= H;
+    }
     if (this.has.has('bats')) {
       this.batT -= dt;
       if (this.batT <= 0) {
@@ -171,6 +196,18 @@ export class Atmosphere {
   /** Behind the near layer and the level (screen space): aurora, far bats, light shafts. */
   drawBack(r: Renderer, t: number, camX: number) {
     const ctx = r.ctx;
+    if (this.clouds.length) {
+      // a slow sea of soft clouds behind everything
+      ctx.save();
+      for (const c of this.clouds) {
+        ctx.globalAlpha = 0.16 + c.s * 0.12;
+        for (let k = 0; k < 4; k++) {
+          const rr = Math.round(c.w * (0.32 + (k % 2) * 0.14));
+          ctx.drawImage(glowSprite(rr, this.col), Math.round(c.x + (k - 1.5) * c.w * 0.38 - rr), Math.round(c.y - rr * 0.6 - (k % 2) * 6));
+        }
+      }
+      ctx.restore();
+    }
     if (this.has.has('aurora')) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -237,9 +274,20 @@ export class Atmosphere {
       r.rect(m.x, m.y, 1, 1, on > 0.6 ? 3 : 2);
       glow(r, m.x, m.y, this.has.has('wisps') ? 9 : 6, this.col, 0.25 * on);
     }
+    const petals = this.has.has('petals');
     for (const l of this.leaves) {
       const f = Math.floor(t * 6 + l.ph) % 4;
-      r.rect(l.x, l.y, f % 2 ? 2 : 1, f % 2 ? 1 : 2, 2);
+      r.rect(l.x, l.y, f % 2 ? 2 : 1, f % 2 ? 1 : 2, petals && l.s > 0.7 ? 3 : 2);
+    }
+    if (this.drops.length) {
+      const ctx = r.ctx;
+      ctx.save();
+      ctx.fillStyle = rgba(this.col, 0.38);
+      for (const d of this.drops) {
+        const len = Math.round(4 + d.s * 3);
+        for (let k = 0; k < len; k++) ctx.fillRect(Math.round(d.x - k * 0.16), Math.round(d.y - k), 1, 1);
+      }
+      ctx.restore();
     }
     for (const b of this.bubbles) {
       r.rect(b.x, b.y, 1, 1, 2);

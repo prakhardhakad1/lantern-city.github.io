@@ -37,6 +37,23 @@ npm run dev        # → http://localhost:5173
   save/continue (localStorage), and an **Animation Gallery** that plays every sprite and lets you
   swap palettes live.
 
+## Districts (Spirit Rail lines)
+
+| # | District | Look | Opened by |
+|---|---|---|---|
+| 1 | Mossgate Outskirts | violet sunset over a mossy ruin | new game |
+| 2 | The Underworks | neon canal, violet brick | Outskirts lantern |
+| 3 | Frostbell Spire | pink winter dawn, snowy village courtyard | Underworks lantern |
+| 4 | Gloomroot Catacombs | dark crypt, gold moss, ghost wisps | Frostbell lantern |
+| 5 | Ember Foundry | steel machinery under a molten sky (story finale) | Catacombs lantern |
+| 6 | Blossom Terrace | spring morning, koi ponds, bamboo, pagoda roofs | Foundry lantern |
+| 7 | Skyharbor Docks | sunset airship docks above the clouds, fan updrafts, wind | Blossom lantern |
+| 8 | Neon Bazaar | rainy night market, glowing sludge, rooftops | Skyharbor lantern |
+
+Districts 6-8 reuse the existing mechanics and creatures (water, updrafts, wind gusts, springs,
+crumbling blocks, one-way platforms, cracked walls); only their art, maps and music are new.
+Route tests: `npx tsx scripts/routes/blossom.ts` (also `skyharbor`, `bazaar`).
+
 ## How it's built
 
 ```

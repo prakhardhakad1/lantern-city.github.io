@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 /**
  * Offline art previews and map checks — no browser needed.
  *
@@ -37,12 +38,12 @@ async function loadWorld(id: string): Promise<WorldDef> {
   for (const dir of readdirSync(resolve('src/content/worlds'))) {
     if (dir === id || !existsSync(resolve(`src/content/worlds/${dir}/index.ts`))) continue;
     try {
-      await import(resolve(`src/content/worlds/${dir}/index.ts`));
+      await import(pathToFileURL(resolve(`src/content/worlds/${dir}/index.ts`)).href);
     } catch {
       /* a broken neighbour doesn't stop this world's checks */
     }
   }
-  const mod = (await import(resolve(`src/content/worlds/${id}/index.ts`))) as { default: WorldDef };
+  const mod = (await import(pathToFileURL(resolve(`src/content/worlds/${id}/index.ts`)).href)) as { default: WorldDef };
   return mod.default;
 }
 

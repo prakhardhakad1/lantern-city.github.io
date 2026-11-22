@@ -415,16 +415,21 @@ export class World {
     r.camera(cx, cy);
     to('near');
     for (const e of this.entities) e.drawBack?.(r);
-    // liquids and wind sit in open cells, so they can live on the background layer and keep
-    // a colour clearly apart from the solid ground
-    if (theme) this.drawFields(r, cx, cy);
+    // liquids and wind sit in open cells, so they get their own layer and a colour clearly
+    // apart from the solid ground
+    if (theme) {
+      to('fluid');
+      this.drawFields(r, cx, cy);
+    }
     to('terrain');
     r.image(this.map.render(r.palette), 0, 0);
     if (!theme) this.drawFields(r, cx, cy);
     const list = [...this.entities, this.player].sort((a, b) => a.depth - b.depth);
+    if (theme) for (const e of list) if (e.layer === 'terrain') e.draw(r);
     const top: Entity[] = [];
     to('actors');
     for (const e of list) {
+      if (theme && e.layer === 'terrain') continue;
       if (e === this.player || e.depth > this.player.depth) top.push(e);
       else e.draw(r);
     }

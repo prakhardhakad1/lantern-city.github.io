@@ -35,6 +35,7 @@ export class EndingScene implements Scene {
       `WOODEN HEARTS   ${p.maxHp - 5}`,
       `SPLINTERED      ${p.deaths} TIMES`,
       '',
+      ...(lit < this.worlds.length ? ['MORE LINES WAIT ON THE SPIRIT RAIL...', ''] : []),
       'THANK YOU FOR PLAYING',
       'LANTERN CITY - A PIXEL WORLDS PROTOTYPE',
       'INSPIRED BY CITY OF NONE',

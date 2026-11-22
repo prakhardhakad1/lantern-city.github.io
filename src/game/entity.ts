@@ -30,6 +30,8 @@ export abstract class Entity implements Rect {
   solid = false;
   /** Can be stood on from above like a one-way platform (moving platforms). */
   platform = false;
+  /** Recolour layer for themed worlds: 'terrain' paints a prop in the ground's colours. Visual only. */
+  layer?: 'terrain';
   /** Falls through one-way platforms (while dropping down through them). */
   ignoreOneWay = false;
 

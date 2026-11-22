@@ -60,6 +60,12 @@ export class Checkpoint extends Entity {
   }
 }
 
+/** Open the train lines a relit lantern leads to (`unlocks` plus any extra `opens`). */
+function openLines(w: World) {
+  const prof = w.game.profile;
+  for (const id of [w.def.unlocks, ...(w.def.opens ?? [])]) if (id && !prof.unlocked.includes(id)) prof.unlocked.push(id);
+}
+
 /** The sector lantern at the end of each world: relight it to open the next train line. */
 export class Goal extends Entity {
   private anim: Anim;
@@ -70,6 +76,8 @@ export class Goal extends Entity {
     this.depth = -2;
     this.key = `goal:${world.def.id}`;
     this.anim = new Anim('goal', world.hasFlag(this.key) ? 'on' : 'off');
+    // saves made before a line existed: a lantern that is already lit still opens its lines
+    if (this.lit) openLines(world);
   }
 
   get lit() {
@@ -90,7 +98,7 @@ export class Goal extends Entity {
     w.setFlag(this.key);
     const prof = w.game.profile;
     const next = w.def.unlocks;
-    if (next && !prof.unlocked.includes(next)) prof.unlocked.push(next);
+    openLines(w);
     prof.hp = prof.maxHp;
     saveProfile(prof);
     w.sfx('powerup');
@@ -282,6 +290,8 @@ export interface DecorOpts {
   anchor?: 'floor' | 'ceiling' | 'center';
   /** Distance in px from the anchor to the light/halo centre (default 6; e.g. 22 for a tall lamp post). */
   glow?: number;
+  /** Themed worlds: draw in the terrain's colours instead of the creatures' (plants, stonework). */
+  layer?: 'terrain';
 }
 
 /** Any animated prop with no gameplay (statues, crates, crystals, banners…). */
@@ -297,6 +307,7 @@ export class Decor extends Entity {
     const anchor = o.anchor ?? 'floor';
     super(world, x + 4, anchor === 'floor' ? y + 8 : anchor === 'ceiling' ? y : y + 4, 1, 1);
     this.depth = o.back ? -20 : -5;
+    if (o.layer) this.layer = o.layer;
     this.anim = new Anim(o.sheet, o.anim ?? Object.keys(getSheet(o.sheet).anims)[0]);
     this.anim.t = hash2(x, y, 2) * 3;
   }

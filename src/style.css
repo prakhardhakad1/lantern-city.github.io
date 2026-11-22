@@ -3,7 +3,8 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #0b0a12;
+  background: #07061a;
+  transition: background-color 0.6s ease;
 }
 
 body {
@@ -15,4 +16,7 @@ body {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 60px rgba(0, 0, 0, 0.55);
 }
