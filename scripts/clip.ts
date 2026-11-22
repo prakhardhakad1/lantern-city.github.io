@@ -22,8 +22,9 @@ const r = makeRenderer();
 r.setPalette(def.palette);
 const { world, input, profile } = makeWorld(def, { enemies: false });
 profile.hp = profile.maxHp;
-const startX = scenario === 'bell' ? 52 * 8 : 60;
-world.player.place(startX, 128 * 8);
+const st = world.spawns.get('station') ?? world.spawns.get('start')!;
+if (id === 'frostbell') world.player.place(scenario === 'bell' ? 52 * 8 : 60, 128 * 8);
+else world.player.place(st.x, st.y);
 world.camera.snap(world.player.cx, world.player.cy);
 mkdirSync(outDir, { recursive: true });
 

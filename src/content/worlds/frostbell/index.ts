@@ -1,4 +1,5 @@
 import type { WorldDef } from '../../../game/registry';
+import { frostbellLook, frostbellMid, frostbellPalette, withMid } from '../../looks';
 import { frostBackdrop } from './backdrop';
 import './enemies';
 import { FROSTBELL_MAP } from './map';
@@ -11,9 +12,10 @@ const world: WorldDef = {
   name: 'Frostbell Spire',
   station: 'FROSTBELL',
   order: 3,
-  palette: ['#0f1626', '#3e5c8a', '#9cc3dc', '#eef8fb'],
+  palette: frostbellPalette,
   tiles: frostStyle,
-  backdrop: frostBackdrop,
+  backdrop: withMid(frostBackdrop, frostbellMid),
+  look: frostbellLook,
   unlocks: 'catacombs',
   // a music box in bright D lydian (I - II - vi - V): airy, cold and glittering
   music: {

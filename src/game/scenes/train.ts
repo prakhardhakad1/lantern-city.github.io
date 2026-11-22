@@ -5,6 +5,9 @@ import { H, W, type Renderer } from '../../engine/renderer';
 import { Anim } from '../../engine/sprites';
 import type { Game, Scene } from '../game';
 import { saveProfile } from '../profile';
+import { glow } from '../../engine/fx';
+import { LayerStack, type LayerName } from '../layers';
+import { finish, haze, lookOf, paintSky } from '../look';
 import type { WorldDef } from '../registry';
 import { PlayScene } from './play';
 
@@ -16,6 +19,8 @@ export class TrainScene implements Scene {
   private twig = new Anim('player', 'idle');
   private moss = new Anim('conductor', 'idle');
   private far: HTMLCanvasElement | null = null;
+  private mid: HTMLCanvasElement | null = null;
+  private stack = new LayerStack();
   private near: HTMLCanvasElement | null = null;
   private sparks = new Particles();
 
@@ -61,19 +66,35 @@ export class TrainScene implements Scene {
         return b.toCanvas(r.palette);
       };
       this.far = paint(this.to.backdrop.far);
+      this.mid = paint(this.to.backdrop.mid);
       this.near = paint(this.to.backdrop.near);
     }
+    const look = lookOf(this.to);
     r.screen();
     r.clear(0);
+    const theme = look.theme;
+    const used = new Set<LayerName>();
+    const to = (n: LayerName) => {
+      if (!theme) return;
+      this.stack.begin(r, n, !used.has(n));
+      used.add(n);
+    };
+    if (!theme) paintSky(r, look);
     const scroll = (img: HTMLCanvasElement | null, speed: number) => {
       if (!img) return;
       const off = -Math.floor((this.t * speed) % img.width);
       r.image(img, off, 0);
       r.image(img, off + img.width, 0);
     };
+    to('far');
     scroll(this.far, 50);
+    if (!theme) haze(r, look, 1);
+    to('near');
+    scroll(this.mid, 100);
+    if (this.mid && !theme) haze(r, look, 0.35);
     scroll(this.near, 160);
     // embankment, rails and sleepers rushing past
+    to('terrain');
     r.rect(0, 151, W, H - 151, 0);
     r.rect(0, 151, W, 1, 2);
     const off = Math.floor((this.t * 300) % 10);
@@ -85,6 +106,7 @@ export class TrainScene implements Scene {
     const bob = Math.floor(this.t / 0.24) % 2;
     const tx = 160;
     const ty = 151 - bob;
+    to('actors');
     r.sprite('train', this.wheels.frame, tx, ty);
     // passengers seen through the windows
     const ctx = r.ctx;
@@ -98,7 +120,19 @@ export class TrainScene implements Scene {
     };
     window(30, () => r.sprite('player', this.twig.frame, tx - 64 + 37, ty - 44 + 26));
     window(70, () => r.sprite('conductor', this.moss.frame, tx - 64 + 77, ty - 44 + 26, { flip: true }));
+    // telegraph poles whipping past in the foreground
+    const poleOff = Math.floor((this.t * 420) % 160);
+    for (let x = W + 20 - poleOff; x > -20; x -= 160) {
+      r.rect(x, 96, 3, 84, 0);
+      r.rect(x - 7, 100, 17, 2, 0);
+      r.rect(x - 6, 98, 2, 2, 1);
+      r.rect(x + 7, 98, 2, 2, 1);
+    }
+    if (theme) this.stack.compose(r, r.palette, theme, used);
     this.sparks.draw(r);
+    // warm light spilling from the carriage windows, and the headlamp
+    for (const wx of [30, 70]) glow(r, tx - 64 + wx + 7, ty - 44 + 15, 16, look.glow, 0.35);
+    finish(r, look, r.palette);
     const a = Math.min(1, this.t / 0.8);
     r.textCenter(`${this.from.station} → NEXT STOP`, W / 2, 30, 2, 1, true);
     r.textCenter(this.to.station, W / 2, 42, 3, 2, true);

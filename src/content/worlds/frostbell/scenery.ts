@@ -1,4 +1,5 @@
 import { bayer, clamp, hash2 } from '../../../engine/math';
+import { DecorParticles, fxRand } from '../../../engine/fx';
 import { PixelBuffer } from '../../../engine/pixels';
 import type { Renderer } from '../../../engine/renderer';
 import { Entity } from '../../../game/entity';
@@ -327,7 +328,7 @@ class Sparrow {
     readonly range: number,
   ) {
     this.x = home;
-    this.t = Math.random() * 2;
+    this.t = fxRand() * 2;
   }
   update(dt: number, w: World) {
     const p = w.player;
@@ -352,10 +353,10 @@ class Sparrow {
       if (k >= 1) {
         if (this.mode === 'flee') {
           this.mode = 'perch';
-          this.t = 3 + Math.random() * 2;
+          this.t = 3 + fxRand() * 2;
         } else {
           this.mode = 'peck';
-          this.t = 1 + Math.random();
+          this.t = 1 + fxRand();
         }
       }
       return;
@@ -366,21 +367,21 @@ class Sparrow {
         this.t = 0;
         this.fx = this.perch[0];
         this.fy = this.perch[1];
-        this.tx = this.home + (Math.random() - 0.5) * this.range;
+        this.tx = this.home + (fxRand() - 0.5) * this.range;
         this.ty = FLOOR;
         this.face = this.tx > this.fx ? 1 : -1;
       }
       return;
     }
     if (this.t <= 0) {
-      if (this.mode === 'peck' && Math.random() < 0.55) {
+      if (this.mode === 'peck' && fxRand() < 0.55) {
         this.mode = 'hop';
         this.t = 0.28;
-        this.face = Math.random() < 0.5 ? 1 : -1;
+        this.face = fxRand() < 0.5 ? 1 : -1;
         this.fx = this.x;
       } else {
         this.mode = 'peck';
-        this.t = 0.8 + Math.random() * 1.6;
+        this.t = 0.8 + fxRand() * 1.6;
       }
     }
     if (this.mode === 'hop') {
@@ -430,11 +431,11 @@ class Hare {
         this.mode = 'hop';
         this.t = 0.4;
         this.fx = this.x;
-        this.face = this.x < POND[0] + 14 ? 1 : this.x > POND[1] - 14 ? -1 : Math.random() < 0.5 ? 1 : -1;
+        this.face = this.x < POND[0] + 14 ? 1 : this.x > POND[1] - 14 ? -1 : fxRand() < 0.5 ? 1 : -1;
         this.tx = clamp(this.x + this.face * 9, POND[0] + 4, POND[1] - 4);
       } else {
         this.mode = 'sit';
-        this.t = 1.5 + Math.random() * 3;
+        this.t = 1.5 + fxRand() * 3;
       }
     }
     if (this.mode === 'hop') {
@@ -471,7 +472,7 @@ class Skater {
     this.x += this.dir * 16 * dt * (0.75 + 0.25 * Math.sin(this.tt * 1.6));
     if (this.x > POND[1] - 8) this.dir = -1;
     if (this.x < POND[0] + 8) this.dir = 1;
-    if (Math.random() < dt * 14) this.trail.push({ x: this.x - this.dir * 4, age: 0 });
+    if (fxRand() < dt * 14) this.trail.push({ x: this.x - this.dir * 4, age: 0 });
     for (const t of this.trail) t.age += dt;
     this.trail = this.trail.filter((t) => t.age < 1.6);
   }
@@ -506,7 +507,7 @@ class Owl {
       this.y = fy + (ty - fy) * k - Math.sin(k * Math.PI) * 12;
       if (this.t <= 0) {
         this.mode = this.mode === 'out' ? 'roost' : 'perch';
-        this.t = this.mode === 'roost' ? 7 + Math.random() * 4 : 20 + Math.random() * 10;
+        this.t = this.mode === 'roost' ? 7 + fxRand() * 4 : 20 + fxRand() * 10;
         [this.x, this.y] = this.mode === 'roost' ? Owl.ROOST : Owl.PERCH;
       }
     }
@@ -585,6 +586,7 @@ class Scenery extends Entity {
   private bdir: 1 | -1 = 1;
   private bwait = 0;
   private shed = 3;
+  private decor = new DecorParticles();
   // cached art
   private palette: unknown = null;
   private village: HTMLCanvasElement | null = null;
@@ -599,6 +601,7 @@ class Scenery extends Entity {
     const w = this.world;
     if (!inView(w, 0, 440)) return;
     for (const s of this.sparrows) s.update(dt, w);
+    this.decor.update(dt);
     this.hare.update(dt, w);
     this.skater.update(dt);
     this.owl.update(dt);
@@ -636,11 +639,11 @@ class Scenery extends Entity {
     }
     this.shed -= dt;
     if (this.shed <= 0) {
-      this.shed = 2.5 + Math.random() * 3;
-      const pn = PINES[Math.floor(Math.random() * PINES.length)];
+      this.shed = 2.5 + fxRand() * 3;
+      const pn = PINES[Math.floor(fxRand() * PINES.length)];
       const cam = w.camera;
       if (pn.x > cam.x - 10 && pn.x < cam.x + 330)
-        w.particles.burst(pn.x + (Math.random() - 0.5) * 12, FLOOR - pn.h * 0.55, 4, { colors: [2, 3], speed: [2, 8], angle: [1.2, 1.9], grav: 90, life: [0.7, 1.3], size: [1, 1] });
+        this.decor.burst(pn.x + (fxRand() - 0.5) * 12, FLOOR - pn.h * 0.55, 4, { colors: [2, 3], speed: [2, 8], angle: [1.2, 1.9], grav: 90, life: [0.7, 1.3] });
     }
   }
 
@@ -840,6 +843,7 @@ class Scenery extends Entity {
       }
     }
     // ground-level creatures stay behind the NPCs and the player (depth -6)
+    this.decor.draw(r);
     for (const s of this.sparrows) s.draw(r, t);
     this.hare.draw(r, t);
     this.skater.draw(r, t);
@@ -862,6 +866,7 @@ class Scenery extends Entity {
 /** Frost-world polish for the avatar: visible breath, a small scarf and footprints. Visuals only. */
 class PlayerFx extends Entity {
   private breath = 1.5;
+  private decor = new DecorParticles();
   private prints: { x: number; age: number }[] = [];
   private lastPrint = -99;
 
@@ -872,6 +877,7 @@ class PlayerFx extends Entity {
 
   update(dt: number) {
     const p = this.world.player;
+    this.decor.update(dt);
     for (const f of this.prints) f.age += dt;
     this.prints = this.prints.filter((f) => f.age < 7);
     if (!p.alive) return;
@@ -881,20 +887,20 @@ class PlayerFx extends Entity {
     }
     this.breath -= dt;
     if (this.breath <= 0) {
-      this.breath = 1.9 + Math.random() * 1.2;
+      this.breath = 1.9 + fxRand() * 1.2;
       const idle = Math.abs(p.vx) < 8;
-      this.world.particles.burst(p.cx + p.facing * 4, p.y + 5, idle ? 3 : 2, {
+      this.decor.burst(p.cx + p.facing * 4, p.y + 5, idle ? 3 : 2, {
         colors: [3, 2],
         speed: [4, 12],
         angle: p.facing > 0 ? [-0.8, -0.1] : [-3.0, -2.3],
         life: [0.6, 1.0],
         drag: 1.2,
-        size: [1, 1],
       });
     }
   }
 
   draw(r: Renderer) {
+    this.decor.draw(r);
     for (const f of this.prints) r.rect(f.x, FLOOR, 2, 1, f.age < 4 ? 1 : 2);
     const p = this.world.player;
     if (!p.alive || p.state !== 'normal') return;

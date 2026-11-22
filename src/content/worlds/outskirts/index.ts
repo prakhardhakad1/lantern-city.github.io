@@ -1,4 +1,5 @@
 import type { WorldDef } from '../../../game/registry';
+import { outskirtsLook, outskirtsMid, outskirtsPalette, withMid } from '../../looks';
 import { outskirtsBackdrop } from './backdrop';
 import './enemies';
 import { OUTSKIRTS_MAP } from './map';
@@ -11,9 +12,10 @@ const world: WorldDef = {
   name: 'Mossgate Outskirts',
   station: 'MOSSGATE',
   order: 1,
-  palette: ['#2b1a17', '#24698a', '#b9b36a', '#f4f1e2'],
+  palette: outskirtsPalette,
   tiles: leafyStyle,
-  backdrop: outskirtsBackdrop,
+  backdrop: withMid(outskirtsBackdrop, outskirtsMid),
+  look: outskirtsLook,
   unlocks: 'underworks',
   ambient: 'spores',
   music: {

@@ -10,11 +10,15 @@ import { defineSheet } from '../engine/sprites';
  */
 
 /** The 7x6 face (head rows 2-7) for each expression. */
+/**
+ * REDESIGN: Twig now wears a pointed hood. The face is a dark opening with two glowing eyes,
+ * the hood has a lit front edge, and its tip flops back. Same 7x6 head box, same poses.
+ */
 const FACE: Record<string, string[]> = {
-  normal: ['.33333.', '3333333', '2330303', '2330303', '2333333', '.22222.'],
-  blink: ['.33333.', '3333333', '2333333', '2330303', '2333333', '.22222.'],
-  up: ['.33333.', '3330303', '2330303', '2333333', '2333333', '.22222.'],
-  hurt: ['.33333.', '3333333', '2303033', '2333333', '2333303', '.22222.'],
+  normal: ['.1222..', '1222221', '2200032', '2030032', '2200022', '.12221.'],
+  blink: ['.1222..', '1222221', '2200032', '2000022', '2033022', '.12221.'],
+  up: ['.1222..', '1203031', '2200032', '2000022', '2200022', '.12221.'],
+  hurt: ['.1222..', '1222221', '2303032', '2000022', '2030322', '.12221.'],
 };
 
 /**
@@ -22,11 +26,11 @@ const FACE: Record<string, string[]> = {
  * a tiny taste of avatar customisation for a multi-world game.
  */
 export const AVATARS: Record<string, string[]> = {
-  sprout: ['....22.', '...2...'],
-  horns: ['.2...2.', '.2...2.'],
+  sprout: ['.....3.', '...12..'],
+  horns: ['.3...3.', '.2...2.'],
   cat: ['.2...2.', '.22.22.'],
   bud: ['..323..', '...2...'],
-  antenna: ['...3...', '...2...'],
+  antenna: ['...3...', '...1...'],
   cap: ['..222..', '.22322.', '2222222'],
 };
 
@@ -38,7 +42,8 @@ function head(face: string, avatar: string): string[] {
   return rows;
 }
 
-const BODY = ['.222.', '12222', '12222', '11222'];
+/** A short cloak with a bright clasp, flaring at the hem (drawn one pixel wider each side). */
+const BODY = ['..232..', '.12222.', '.12222.', '1122221', '11.2.11'];
 
 interface Pose {
   /** Top-left of the 7x8 head (incl. what grows on top) and the 5x4 body. */
@@ -56,13 +61,32 @@ interface Pose {
 
 function pose(p: Pose, avatar: string): string[] {
   const b = new PixelBuffer(16, 20);
-  b.polyline(p.ba, 2);
-  b.polyline(p.bl, 2);
-  b.stamp(BODY, p.body[0], p.body[1]);
-  b.polyline(p.fl, 3);
+  b.polyline(p.ba, 1);
+  b.polyline(p.bl, 1);
+  b.stamp(BODY, p.body[0] - 1, p.body[1]);
+  b.polyline(p.fl, 2);
+  // boots
+  const foot = (l: number[]) => b.set(l[l.length - 2], l[l.length - 1], 0);
+  foot(p.bl);
+  foot(p.fl);
   b.stamp(head(p.hv ?? 'normal', avatar), p.head[0], p.head[1]);
-  b.polyline(p.fa, 3);
-  if (p.stick) b.polyline(p.stick, 2);
+  // the hood's tip flops back over the shoulder
+  b.set(p.head[0] - 1, p.head[1] + 3, 1);
+  b.set(p.head[0] - 1, p.head[1] + 4, 2);
+  b.polyline(p.fa, 2);
+  if (p.stick) {
+    // the stick is now a lantern staff with a glowing head
+    b.polyline(p.stick, 1);
+    const ex = p.stick[p.stick.length - 2];
+    const ey = p.stick[p.stick.length - 1];
+    b.set(ex, ey, 3);
+  } else {
+    // a little lantern carried in the front hand
+    const hx = p.fa[p.fa.length - 2];
+    const hy = p.fa[p.fa.length - 1];
+    b.set(hx, hy + 1, 3);
+    b.set(hx, hy + 2, 2);
+  }
   return b.toRows();
 }
 

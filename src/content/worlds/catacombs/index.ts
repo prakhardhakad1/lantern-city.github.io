@@ -1,4 +1,5 @@
 import type { WorldDef } from '../../../game/registry';
+import { catacombsLook, catacombsMid, catacombsPalette, withMid } from '../../looks';
 import { catacombBackdrop } from './backdrop';
 import './enemies';
 import { CATACOMBS_MAP } from './map';
@@ -16,9 +17,10 @@ const world: WorldDef = {
   name: 'Gloomroot Catacombs',
   station: 'GLOOMROOT',
   order: 4,
-  palette: ['#0e0d12', '#3b3349', '#6f8a5a', '#dfe8b0'],
+  palette: catacombsPalette,
   tiles: catacombStyle,
-  backdrop: catacombBackdrop,
+  backdrop: withMid(catacombBackdrop, catacombsMid),
+  look: catacombsLook,
   unlocks: 'foundry',
   dark: true,
   // Slow A phrygian dirge: i - bII - i - v° with a lonely lead and long rests.

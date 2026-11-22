@@ -1,4 +1,5 @@
 import type { WorldDef } from '../../../game/registry';
+import { foundryLook, foundryMid, foundryPalette, withMid } from '../../looks';
 import { foundryBackdrop } from './backdrop';
 import './boss';
 import './enemies';
@@ -17,9 +18,10 @@ const world: WorldDef = {
   name: 'Ember Foundry',
   station: 'FOUNDRY',
   order: 5,
-  palette: ['#1a0f0b', '#7a2d1b', '#e2792f', '#ffe9b0'],
+  palette: foundryPalette,
   tiles: foundryStyle,
-  backdrop: foundryBackdrop,
+  backdrop: withMid(foundryBackdrop, foundryMid),
+  look: foundryLook,
   music: foundryMusic,
   ambient: 'embers',
   map: FOUNDRY_MAP,

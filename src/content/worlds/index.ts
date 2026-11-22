@@ -5,9 +5,19 @@ import type { WorldDef } from '../../game/registry';
  * WorldDef is picked up automatically — adding a world never touches shared code.
  * A world that fails to load is skipped (and logged) instead of breaking the game.
  */
-const modules = import.meta.glob<{ default: WorldDef }>('./*/index.ts');
+let modules: Record<string, () => Promise<{ default: WorldDef }>> = {};
+try {
+  modules = import.meta.glob<{ default: WorldDef }>('./*/index.ts');
+} catch {
+  /* outside Vite (headless tools): worlds are handed in with setWorlds() */
+}
 
 let worlds: WorldDef[] = [];
+
+/** Tools only: register already-imported worlds (Node has no import.meta.glob). */
+export function setWorlds(list: WorldDef[]) {
+  worlds = [...list].sort((a, b) => a.order - b.order);
+}
 
 export async function loadWorlds(): Promise<WorldDef[]> {
   const loaded = await Promise.all(

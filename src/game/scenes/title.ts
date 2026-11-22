@@ -6,6 +6,9 @@ import { Anim } from '../../engine/sprites';
 import { T, TileMap } from '../../engine/tilemap';
 import type { Game, Scene } from '../game';
 import { clearProfile, loadProfile, newProfile, saveProfile, type Profile } from '../profile';
+import { glow, rgba } from '../../engine/fx';
+import { LayerStack, type LayerName } from '../layers';
+import { Atmosphere, bloom, finish, haze, lookOf, paintSky } from '../look';
 import type { WorldDef } from '../registry';
 import { GalleryScene } from './gallery';
 import { PlayScene } from './play';
@@ -20,8 +23,12 @@ export class TitleScene implements Scene {
   /** The title backdrop slowly cycles through every world: a window onto the whole city. */
   private shown: WorldDef;
   private showT = 0;
-  private art: { far: HTMLCanvasElement | null; near: HTMLCanvasElement | null; ground: HTMLCanvasElement } | null = null;
+  private art: { far: HTMLCanvasElement | null; mid: HTMLCanvasElement | null; near: HTMLCanvasElement | null; ground: HTMLCanvasElement } | null = null;
+  private look: ReturnType<typeof lookOf> | null = null;
+  private atmo: Atmosphere | null = null;
   private twig = new Anim('player', 'idle');
+  private walk = new Anim('player', 'run');
+  private stack = new LayerStack();
   private flame = new Anim('lantern', 'on');
   private avatars = Object.keys(AVATARS);
   private avatar: number;
@@ -112,42 +119,139 @@ export class TitleScene implements Scene {
     // the ground strip is drawn with the world's real tile style
     const map = new TileMap(W / 8, 4, this.shown.tiles);
     for (let x = 0; x < W / 8; x++) for (let y = 1; y < 4; y++) map.set(x, y, T.Solid);
-    this.art = { far: paint(this.shown.backdrop.far), near: paint(this.shown.backdrop.near), ground: map.render(r.palette) };
+    this.art = {
+      far: paint(this.shown.backdrop.far),
+      mid: paint(this.shown.backdrop.mid),
+      near: paint(this.shown.backdrop.near),
+      ground: map.render(r.palette),
+    };
+    this.look = lookOf(this.shown);
+    this.atmo = new Atmosphere(this.look, this.shown.palette);
+  }
+
+  /** The twig strolls along the ground, stops to warm up by the lantern, and strolls back. */
+  private twigPos() {
+    const cyc = this.t % 16;
+    if (cyc < 6) return { x: 40 + (cyc / 6) * 190, dir: 1 as const, walk: true };
+    if (cyc < 8) return { x: 230, dir: 1 as const, walk: false };
+    if (cyc < 14) return { x: 230 - ((cyc - 8) / 6) * 190, dir: -1 as const, walk: true };
+    return { x: 40, dir: -1 as const, walk: false };
   }
 
   draw(r: Renderer) {
     if (!this.art) this.build(r);
     const art = this.art!;
+    const look = this.look!;
+    const atmo = this.atmo!;
+    const ctx = r.ctx;
+    const t = this.t;
+    atmo.update(1 / 60, t, 0.2, 0);
     r.screen();
     r.clear(0);
-    for (const [img, speed] of [
-      [art.far, 5],
-      [art.near, 12],
-    ] as const) {
-      if (!img) continue;
-      const off = -Math.floor((this.t * speed) % img.width);
+    const theme = look.theme;
+    const L = this.stack;
+    const used = new Set<LayerName>();
+    const to = (n: LayerName) => {
+      if (!theme) return;
+      L.begin(r, n, !used.has(n));
+      used.add(n);
+    };
+    if (!theme) paintSky(r, look);
+    const scroll = (img: HTMLCanvasElement | null, speed: number) => {
+      if (!img) return;
+      const off = -Math.floor((t * speed) % img.width);
       r.image(img, off, 0);
       r.image(img, off + img.width, 0);
+    };
+    to('far');
+    scroll(art.far, 4);
+    if (!theme) {
+      haze(r, look, 1);
+      atmo.drawBack(r, t, t * 20);
     }
+    to('near');
+    scroll(art.mid, 8);
+    if (art.mid && !theme) haze(r, look, 0.35);
+    scroll(art.near, 13);
+    r.halo(256, H - 38, 22 + (Math.sin(t * 9) > 0.7 ? 1 : 0), 1);
+    to('terrain');
     r.image(art.ground, 0, H - 32);
-    r.halo(256, H - 38, 22 + (Math.sin(this.t * 9) > 0.7 ? 1 : 0), 1);
+    // the lantern and the strolling twig
+    to('actors');
     r.sprite('lantern', this.flame.frame, 256, H - 24);
-    r.sprite('player', this.twig.frame, 70, H - 24);
-    r.text(this.shown.station, W - 4 - this.shown.station.length * 4, H - 9, 1);
+    const tw = this.twigPos();
+    this.walk.update(1 / 60);
+    to('hero');
+    r.sprite('player', tw.walk ? this.walk.frame : this.twig.frame, tw.x, H - 24, { flip: tw.dir < 0 });
+    if (theme) L.compose(r, r.palette, theme, used, { far: () => atmo.drawBack(r, t, t * 20) });
+    atmo.drawShafts(r, t, t * 20);
+    bloom(r, look, [{ x: 256, y: H - 36, r: 70 }, { x: tw.x, y: H - 32, r: 34 }], t);
+    atmo.drawFog(r, t, t * 20, look.haze);
+    atmo.drawFront(r, t, null);
+    finish(r, look, r.palette);
     // dithered cross-fade between worlds (behind the menu, so it stays readable)
     const edge = Math.min(this.showT, SHOW_SECONDS - this.showT);
     if (edge < 0.35) r.dither(1 - edge / 0.35, 0);
 
-    const bob = Math.round(Math.sin(this.t * 1.5) * 2);
-    r.textCenter('LANTERN CITY', W / 2, 26 + bob, 3, 3, true);
-    r.textCenter('A PIXEL WORLDS PROTOTYPE', W / 2, 52, 2, 1, true);
+    // logo: deep shadow, outline, a light sweep across the letters, and a lantern at each end
+    const bob = Math.round(Math.sin(t * 1.5) * 2);
+    const ly = 22 + bob;
+    r.textCenter('LANTERN CITY', W / 2 + 2, ly + 3, 1, 3, false);
+    r.textCenter('LANTERN CITY', W / 2, ly, 3, 3, true);
+    const sweep = ((t * 0.45) % 1.6) - 0.3;
+    if (sweep > 0 && sweep < 1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(60, ly - 2, 200, 22);
+      ctx.clip();
+      glow(r, 60 + sweep * 200, ly + 9, 11, r.palette[3], 0.28);
+      ctx.restore();
+    }
+    for (const lx of [52, W - 52]) {
+      const sway = Math.sin(t * 1.6 + lx) * 1.5;
+      r.line(lx, 0, lx + sway, ly - 4, 1);
+      r.sprite('lantern', this.flame.frame, lx + sway, ly + 12);
+      glow(r, lx + sway, ly + 4, 22, look.glow, 0.45);
+    }
+    r.textCenter('A PIXEL WORLDS PROTOTYPE', W / 2, 50, 2, 1, true);
+
+    // menu panel
+    const py = 62;
+    const ph = this.items.length * 11 + 8;
+    ctx.save();
+    ctx.fillStyle = rgba(r.palette[0], 0.62);
+    ctx.fillRect(84, py, W - 168, ph);
+    ctx.restore();
+    r.frame(84, py, W - 168, ph, 1);
+    r.rect(85, py, W - 170, 1, 2);
     this.items.forEach((item, i) => {
-      const y = 72 + i * 11;
+      const y = py + 6 + i * 11;
       const sel = i === this.index;
       const label = item === 'AVATAR' ? `AVATAR: ${this.avatars[this.avatar].toUpperCase()}` : item;
-      r.textCenter(sel ? (item === 'AVATAR' ? `← ${label} →` : `→ ${label} ←`) : label, W / 2, y, sel ? 3 : 2, 1, true);
+      if (sel) {
+        ctx.save();
+        ctx.fillStyle = rgba(r.palette[1], 0.55);
+        ctx.fillRect(88, y - 2, W - 176, 9);
+        ctx.restore();
+        glow(r, W / 2, y + 2, 30, look.glow, 0.12 + 0.05 * Math.sin(t * 4));
+      }
+      const nudge = sel ? Math.round(Math.sin(t * 6)) : 0;
+      r.textCenter(sel ? (item === 'AVATAR' ? `← ${label} →` : `→ ${label} ←`) : label, W / 2 + nudge * 0, y, sel ? 3 : 2, 1, true);
     });
-    r.textCenter('↑↓ CHOOSE   Z / ENTER SELECT   M MUSIC', W / 2, 120, 1, 1, true);
+    ctx.save();
+    ctx.fillStyle = rgba(r.palette[0], 0.55);
+    ctx.fillRect(60, py + ph + 3, W - 120, 11);
+    ctx.restore();
+    r.textCenter('↑↓ CHOOSE   Z / ENTER SELECT   M MUSIC', W / 2, py + ph + 6, 2, 1, true);
+
+    // world card: station name and its palette
+    const name = this.shown.station;
+    const nx = W - 6 - name.length * 4;
+    r.textOutlined(name, nx, H - 10, 3);
+    this.shown.palette.forEach((_, i) => {
+      r.rect(nx - 22 + i * 5, H - 9, 4, 4, i);
+      r.frame(nx - 23 + i * 5, H - 10, 6, 6, 0);
+    });
   }
 }
 

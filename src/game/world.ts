@@ -10,6 +10,8 @@ import type { Entity, Light } from './entity';
 import type { Game } from './game';
 import { Player } from './player';
 import type { SpawnPoint } from './profile';
+import { LayerStack, type LayerName } from './layers';
+import { Atmosphere, bloom, finish, haze, lookOf, paintSky } from './look';
 import { BASE_LEGEND, entityFactory, TILE_OF, type SpawnOpts, type WorldDef } from './registry';
 
 /** What the world can ask of the screen it is shown on (dialogs, menus, respawn…). */
@@ -63,11 +65,18 @@ export class World {
   arena: Rect | null = null;
   private freeze = 0;
   private breakables: Breakable[] = [];
-  private layers: { far: HTMLCanvasElement | null; near: HTMLCanvasElement | null; palette: unknown } = {
+  private layers: { far: HTMLCanvasElement | null; mid: HTMLCanvasElement | null; near: HTMLCanvasElement | null; palette: unknown } = {
     far: null,
+    mid: null,
     near: null,
     palette: null,
   };
+  /** Visual-only atmosphere (sky, bloom, ambient life); see game/look.ts. */
+  private look!: ReturnType<typeof lookOf>;
+  private atmo!: Atmosphere;
+  /** Off-screen layers for the per-layer recolour pass (visual only). */
+  private stack = new LayerStack();
+  private lastCam = { x: NaN, y: NaN };
   private dark: HTMLCanvasElement | null = null;
   private lightDisks = new Map<number, HTMLCanvasElement>();
 
@@ -76,6 +85,8 @@ export class World {
     readonly def: WorldDef,
     spawn: SpawnPoint,
   ) {
+    this.look = lookOf(def);
+    this.atmo = new Atmosphere(this.look, def.palette);
     const rows = def.map;
     const w = Math.max(...rows.map((r) => r.length));
     this.map = new TileMap(w, rows.length, def.tiles);
@@ -334,6 +345,12 @@ export class World {
     this.camera.bounds = this.arena ?? { x: 0, y: 0, w: this.map.pw, h: this.map.ph };
     const look = this.player.lookAhead();
     this.camera.follow(this.player.cx + look.x, this.player.cy + look.y, dt);
+    // visual-only: ambient life drifts against the camera
+    const cam = this.camera;
+    const dx = Number.isNaN(this.lastCam.x) ? 0 : cam.x - this.lastCam.x;
+    const dy = Number.isNaN(this.lastCam.y) ? 0 : cam.y - this.lastCam.y;
+    this.lastCam = { x: cam.x, y: cam.y };
+    this.atmo.update(dt, this.time, Math.abs(dx) > 60 ? 0 : dx, Math.abs(dy) > 60 ? 0 : dy);
   }
 
   private ambientDebt = 0;
@@ -385,24 +402,83 @@ export class World {
     const cy = Math.round(cam.y) + cam.shakeY;
     r.screen();
     r.clear(0);
-    this.drawBackdrop(r, cx);
+    const theme = this.look.theme;
+    const L = this.stack;
+    const used = new Set<LayerName>();
+    const to = (name: LayerName) => {
+      if (!theme) return;
+      L.begin(r, name, !used.has(name));
+      used.add(name);
+    };
+    if (!theme) paintSky(r, this.look);
+    this.drawBackdrop(r, cx, to);
     r.camera(cx, cy);
+    to('near');
     for (const e of this.entities) e.drawBack?.(r);
+    // liquids and wind sit in open cells, so they can live on the background layer and keep
+    // a colour clearly apart from the solid ground
+    if (theme) this.drawFields(r, cx, cy);
+    to('terrain');
     r.image(this.map.render(r.palette), 0, 0);
-    this.drawFields(r, cx, cy);
+    if (!theme) this.drawFields(r, cx, cy);
     const list = [...this.entities, this.player].sort((a, b) => a.depth - b.depth);
-    for (const e of list) e.draw(r);
+    const top: Entity[] = [];
+    to('actors');
+    for (const e of list) {
+      if (e === this.player || e.depth > this.player.depth) top.push(e);
+      else e.draw(r);
+    }
+    to('hero');
+    this.player.draw(r);
+    if (theme) {
+      const ox = r.ox;
+      const oy = r.oy;
+      const p = this.player;
+      const bx = Math.max(0, Math.min(W - 1, Math.round(p.cx + ox - 36)));
+      const by = Math.max(0, Math.min(H - 1, Math.round(p.bottom + oy - 44)));
+      const box = { x: bx, y: by, w: Math.min(72, W - bx), h: Math.min(56, H - by) };
+      L.compose(r, r.palette, theme, used, { far: () => this.atmo.drawBack(r, this.time, cx) }, box);
+      r.ox = ox;
+      r.oy = oy;
+    }
+    for (const e of top) if (e !== this.player) e.draw(r);
     this.particles.draw(r);
+    const t = this.time;
+    if (!this.def.dark) {
+      this.atmo.drawShafts(r, t, cx);
+      this.atmo.drawFog(r, t, cx, this.look.haze);
+      bloom(r, this.look, this.lights(), t);
+      this.atmo.drawFront(r, t, this);
+    }
     const target = this.player.interactTarget;
     if (target && !this.ui.busy) {
       const bob = Math.round(Math.sin(this.time * 6));
       r.text('↑', target.cx - 1, target.y - 9 + bob, 3);
     }
-    if (this.def.dark) this.drawDarkness(r, cx, cy);
+    if (this.def.dark) {
+      this.drawDarkness(r, cx, cy);
+      bloom(r, this.look, this.lights(), t);
+      this.atmo.drawFront(r, t, this);
+    }
     r.screen();
+    finish(r, this.look, r.palette);
   }
 
-  private drawBackdrop(r: Renderer, cx: number) {
+  /** Every light in view, plus the avatar's own soft glow (visual only). */
+  private lights(): Light[] {
+    const out: Light[] = [];
+    if (this.player.alive && this.look.playerLight > 0) out.push({ x: this.player.cx, y: this.player.cy, r: this.look.playerLight });
+    const cam = this.camera;
+    for (const e of this.entities) {
+      const l = e.light?.();
+      if (!l) continue;
+      for (const one of Array.isArray(l) ? l : [l])
+        if (one.x + one.r > cam.x && one.x - one.r < cam.x + W && one.y + one.r > cam.y && one.y - one.r < cam.y + H) out.push(one);
+    }
+    return out;
+  }
+
+  private drawBackdrop(r: Renderer, cx: number, to: (name: LayerName) => void) {
     const bd = this.def.backdrop;
     if (this.layers.palette !== r.palette) {
       const paint = (f?: (b: PixelBuffer) => void) => {
@@ -411,7 +487,7 @@ export class World {
         f(b);
         return b.toCanvas(r.palette);
       };
-      this.layers = { far: paint(bd.far), near: paint(bd.near), palette: r.palette };
+      this.layers = { far: paint(bd.far), mid: paint(bd.mid), near: paint(bd.near), palette: r.palette };
     }
     const layer = (img: HTMLCanvasElement | null, scroll: number) => {
       if (!img) return;
@@ -419,8 +495,19 @@ export class World {
       r.image(img, off, 0);
       r.image(img, off + img.width, 0);
     };
-    layer(this.layers.far, bd.farScroll ?? 0.15);
-    layer(this.layers.near, bd.nearScroll ?? 0.4);
+    const far = bd.farScroll ?? 0.15;
+    const near = bd.nearScroll ?? 0.4;
+    const themed = !!this.look.theme;
+    to('far');
+    layer(this.layers.far, far);
+    if (!themed) {
+      haze(r, this.look, 1);
+      this.atmo.drawBack(r, this.time, cx);
+    }
+    to('near');
+    layer(this.layers.mid, bd.midScroll ?? (far + near) / 2);
+    if (this.layers.mid && !themed) haze(r, this.look, 0.35);
+    layer(this.layers.near, near);
   }
 
   /** Animated liquids and wind fields, drawn over the static tile layer. */

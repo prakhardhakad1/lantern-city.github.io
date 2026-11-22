@@ -3,6 +3,7 @@ import type { Palette } from '../engine/palette';
 import type { PixelBuffer } from '../engine/pixels';
 import { T, type TileStyle } from '../engine/tilemap';
 import type { Entity } from './entity';
+import type { Look } from './look';
 import type { World } from './world';
 
 /**
@@ -33,9 +34,12 @@ export function entityFactory(kind: string): EntityFactory | undefined {
 export interface Backdrop {
   far?: (buf: PixelBuffer) => void;
   near?: (buf: PixelBuffer) => void;
+  /** Optional middle layer (filled silhouettes), drawn between far and near. */
+  mid?: (buf: PixelBuffer) => void;
   /** Scroll factors relative to the camera (0 = fixed to screen, 1 = moves with the world). */
   farScroll?: number;
   nearScroll?: number;
+  midScroll?: number;
 }
 
 export interface WorldDef {
@@ -62,6 +66,8 @@ export interface WorldDef {
   hidden?: boolean;
   /** Atmospheric particles drifting through the view. */
   ambient?: 'motes' | 'snow' | 'embers' | 'spores';
+  /** Visual-only look: sky gradient, haze, bloom, ambient life, grade (see game/look.ts). */
+  look?: Look;
 }
 
 /** Map characters that become tiles (fixed for every world). */

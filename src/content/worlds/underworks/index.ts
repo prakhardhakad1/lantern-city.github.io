@@ -1,4 +1,5 @@
 import type { WorldDef } from '../../../game/registry';
+import { underworksLook, underworksMid, underworksPalette, withMid } from '../../looks';
 import { underworksBackdrop } from './backdrop';
 import './enemies';
 import { UNDERWORKS_MAP } from './map';
@@ -23,9 +24,10 @@ const world: WorldDef = {
   name: 'The Underworks',
   station: 'UNDERWORKS',
   order: 2,
-  palette: ['#0d0b2a', '#6b1046', '#4db6a3', '#f2e6c2'],
+  palette: underworksPalette,
   tiles: underworksStyle,
-  backdrop: underworksBackdrop,
+  backdrop: withMid(underworksBackdrop, underworksMid),
+  look: underworksLook,
   unlocks: 'frostbell',
   ambient: 'motes',
   // B Phrygian at a brisker clip than the Outskirts: square-wave plinks like dripping pipes
