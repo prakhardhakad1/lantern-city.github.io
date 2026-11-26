@@ -13,6 +13,7 @@ import type { WorldDef } from '../registry';
 import { GalleryScene } from './gallery';
 import { PlayScene } from './play';
 import { postcard } from './postcard';
+import { WorldSelectScene } from './worlds';
 
 /**
  * HOME SCREEN: Lantern City at night. Every district stands on the skyline with its own landmark
@@ -245,7 +246,7 @@ export class TitleScene implements Scene {
     game.r.setPalette(PAL);
     document.body.style.background = '#07061a';
     game.audio.playSong(this.def.music);
-    this.items = [...(this.save ? ['CONTINUE'] : []), 'NEW GAME', 'AVATAR', 'ANIMATION GALLERY'];
+    this.items = [...(this.save ? ['CONTINUE'] : []), 'NEW GAME', 'CHOOSE WORLD', 'AVATAR', 'ANIMATION GALLERY'];
     this.avatar = Math.max(0, this.avatars.indexOf(this.save?.avatar ?? 'sprout'));
     setAvatar(this.avatars[this.avatar]);
   }
@@ -307,6 +308,9 @@ export class TitleScene implements Scene {
           g.profile.avatar = this.avatars[this.avatar];
           g.scene = new PlayScene(g, this.def, { kind: 'start' });
         });
+        break;
+      case 'CHOOSE WORLD':
+        g.transition(() => (g.scene = new WorldSelectScene(g, this.avatars[this.avatar], () => new TitleScene(g))));
         break;
       case 'ANIMATION GALLERY':
         g.transition(() => (g.scene = new GalleryScene(g)));
@@ -482,9 +486,10 @@ export class TitleScene implements Scene {
   private drawMenu(r: Renderer, t: number, prog: { lit: boolean; open: boolean }[]) {
     const ctx = r.ctx;
     const x = 8;
-    const y = 84;
     const w = 104;
     const h = 14 + this.items.length * 12 + 14;
+    // keep the panel clear of the footer when the menu grows
+    const y = Math.min(84, H - 13 - h);
     panel(r, x, y, w, h);
     r.text('SPIRIT RAIL', x + 8, y + 5, 2);
     this.items.forEach((item, i) => {
